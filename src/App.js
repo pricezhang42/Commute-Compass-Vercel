@@ -57,6 +57,7 @@ const App = () => {
     <div className="App">
       <APIProvider apiKey={googleMapsApiKey}>
         <h1>Commute Compass</h1>
+        <a href="https://github.com/pricezhang42/Commute-Compass-Vercel">GitHub Repo</a>
         <div style={{ marginBottom: '10px' }}>
           <strong>Origin:</strong><PlaceAutocompleteClassic onPlaceSelect={setOrigin} currPos={currentPosition} /> 
           <strong>Destination:</strong><PlaceAutocompleteClassic onPlaceSelect={setDestination} currPos={currentPosition} />
@@ -234,55 +235,65 @@ function DisplayRoute({routePlans, selectedPlanIndex}) {
     };
   
     const newDirectionsDisplays = [];
+    let skipSeg = false;
   
     routeInfo.segments.forEach((segment, index) => {
       console.log(segment);
-      if (segment.type === 'walk' || segment.type === 'transfer') {
-        const fromGeographic = getGeographic(segment.from);
-        const toGeographic = getGeographic(segment.to);
-        const request = {
-          origin: { lat: parseFloat(fromGeographic.latitude), lng: parseFloat(fromGeographic.longitude) },
-          destination: { lat: parseFloat(toGeographic.latitude), lng: parseFloat(toGeographic.longitude) },
-          travelMode: 'WALKING'
-        };
-  
-        const polylineOptionsThis = (segment.type === 'walk' || segment.type === 'transfer') ? polylineOptions : {};
-  
-        const directionsDisplay = new routes.DirectionsRenderer({
-          map: map,
-          polylineOptions: polylineOptionsThis
-        });
-        newDirectionsDisplays.push(directionsDisplay);
-  
-        directionsService.route(request, (result, status) => {
-          if (status === 'OK') {
-            directionsDisplay.setDirections(result);
+      if (!skipSeg) {
+        if (segment.type === 'walk' || segment.type === 'transfer') {
+          const fromGeographic = getGeographic(segment.from);
+          const toGeographic = getGeographic(segment.to);
+          const request = {
+            origin: { lat: parseFloat(fromGeographic.latitude), lng: parseFloat(fromGeographic.longitude) },
+            destination: { lat: parseFloat(toGeographic.latitude), lng: parseFloat(toGeographic.longitude) },
+            travelMode: 'WALKING'
+          };
+    
+          const polylineOptionsThis = (segment.type === 'walk' || segment.type === 'transfer') ? polylineOptions : {};
+    
+          const directionsDisplay = new routes.DirectionsRenderer({
+            map: map,
+            polylineOptions: polylineOptionsThis
+          });
+          newDirectionsDisplays.push(directionsDisplay);
+    
+          directionsService.route(request, (result, status) => {
+            if (status === 'OK') {
+              directionsDisplay.setDirections(result);
+            }
+          });
+        } else if (segment.type === 'ride') {
+          let nextSeg = routeInfo.segments[index + 1];
+          if (nextSeg.type === 'ride') {
+            nextSeg = routeInfo.segments[index + 2];
+            skipSeg = true;
           }
-        });
-      } else if (segment.type === 'ride') {
-        const nextSeg = routeInfo.segments[index + 1];
-        const toGeographic = getGeographic(nextSeg.from);
-        const prevSeg = routeInfo.segments[index - 1];
-        const fromGeographic = getGeographic(prevSeg.to);
-  
-        const request = {
-          origin: { lat: parseFloat(fromGeographic.latitude), lng: parseFloat(fromGeographic.longitude) },
-          destination: { lat: parseFloat(toGeographic.latitude), lng: parseFloat(toGeographic.longitude) },
-          travelMode: 'TRANSIT',
-          transitOptions: {
-            routingPreference: 'LESS_WALKING'
-          }
-        };
-  
-        const directionsDisplay = new routes.DirectionsRenderer({ map: map });
-        newDirectionsDisplays.push(directionsDisplay);
-  
-        directionsService.route(request, (result, status) => {
-          if (status === 'OK') {
-            directionsDisplay.setDirections(result);
-          }
-        });
+          const toGeographic = getGeographic(nextSeg.from);
+          const prevSeg = routeInfo.segments[index - 1];
+          const fromGeographic = getGeographic(prevSeg.to);
+    
+          const request = {
+            origin: { lat: parseFloat(fromGeographic.latitude), lng: parseFloat(fromGeographic.longitude) },
+            destination: { lat: parseFloat(toGeographic.latitude), lng: parseFloat(toGeographic.longitude) },
+            travelMode: 'TRANSIT',
+            transitOptions: {
+              routingPreference: 'LESS_WALKING'
+            }
+          };
+    
+          const directionsDisplay = new routes.DirectionsRenderer({ map: map });
+          newDirectionsDisplays.push(directionsDisplay);
+    
+          directionsService.route(request, (result, status) => {
+            if (status === 'OK') {
+              directionsDisplay.setDirections(result);
+            }
+          });
+        }
+      } else {
+        skipSeg = false;
       }
+
     });
   
     setDirectionsDisplays(newDirectionsDisplays);
