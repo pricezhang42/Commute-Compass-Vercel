@@ -5,7 +5,7 @@ import './App.css';
 
 
 const serverPort = 3001;
-const googleMapsApiKey = "AIzaSyDjpkA1wkyhf5VjzfkeIOqP9IzZLn55C80";
+const googleMapsApiKey = "AIzaSyDsQUV_LMMHVvJNpRV4PC6wYd4NsooyWFU";
 
 const containerStyle = {
   width: '100%',
