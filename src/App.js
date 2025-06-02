@@ -160,7 +160,7 @@ function GetRouteButton({ origin, destination, setPlans, setScores, setSelected 
         origin: coordOrigin,
         destination: coordDest,
       }));
-      const response = await fetch(`https://commute-compass-backend.vercel.app/myFunction`, {
+      const response = await fetch(`http://localhost:3000/myFunction`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -300,7 +300,18 @@ function DisplayRoute({routePlans, selectedPlanIndex}) {
   };
 }
 
-
+const getShelterClass = (shelterType) => {
+  switch (shelterType) {
+    case 'Heated Shelter':
+      return 'shelter-heated';
+    case 'Unheated Shelter':
+      return 'shelter-unheated';
+    case 'Unsheltered':
+      return 'shelter-unsheltered';
+    default:
+      return '';
+  }
+};
 
 function RouteCards({ routePlans, routeScores, setSelected }) {
   const cards = [];
@@ -309,22 +320,35 @@ function RouteCards({ routePlans, routeScores, setSelected }) {
     const thisRoutePlan = routePlans[routeScores[i].planId - 1];
     let routeText = thisRoutePlan.segments.map((segment, index) => {
       let segmentText = '';
+      const startTime = segment.times?.start?.substring(11, 16)
       if (segment.type === 'ride') {
         segmentText = (
           <div key={index} className="segment">
-            ● <strong>Ride:</strong> Riding: {segment.times.durations.riding} min, Bus: {segment.route.key}
+            ● <strong>Ride:</strong> (<i>{startTime}</i>) {segment.times.durations.riding} min, Bus: {segment.route.key}
           </div>
         );
       } else if (segment.type === 'walk') {
         segmentText = (
           <div key={index} className="segment">
-            ● <strong>Walk:</strong> Walking: {segment.times.durations.walking} min
+            ● <strong>Walk:</strong> (<i>{startTime}</i>) {segment.times.durations.walking} min
+            {segment.to?.stop?.shelter && (
+              <span className={getShelterClass(segment.to.stop.shelter)}>
+                {' '}
+                ({segment.to.stop.shelter})
+              </span>
+            )}
           </div>
         );
       } else if (segment.type === 'transfer') {
         segmentText = (
           <div key={index} className="segment">
-            ● <strong>Transfer:</strong> Walking: {segment.times.durations.walking} min, Waiting: {segment.times.durations.waiting} min({segment.to.stop.isSheltered ? "sheltered" : "unsheltered"})
+            ● <strong>Transfer:</strong> (<i>{startTime}</i>) Walking: {segment.times.durations.walking} min, Waiting: {segment.times.durations.waiting} min
+            {segment.to?.stop?.shelter && (
+              <span className={getShelterClass(segment.to.stop.shelter)}>
+                {' '}
+                ({segment.to.stop.shelter})
+              </span>
+            )}
           </div>
         );
       }
@@ -336,7 +360,8 @@ function RouteCards({ routePlans, routeScores, setSelected }) {
       title: 'Route ' + (i + 1),
       description: (
         <div>
-          <div><strong>Score:</strong> {routeScores[i].score.toFixed(2)} | <strong>Time Outside:</strong> {routeScores[i].totalTimeOutside} min</div>
+          <div><strong>Score:</strong> {routeScores[i].score.toFixed(2)}</div>
+          <div><strong>Time Outside:</strong> {routeScores[i].totalTimeOutside} min ({routeScores[i].totalTimeSheltered} min sheltered)</div>
           <div className="segments">{routeText}</div>
         </div>
       ),
