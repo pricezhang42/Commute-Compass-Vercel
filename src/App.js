@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect  } from 'react';
 import {APIProvider, Map, useMap, useMapsLibrary} from '@vis.gl/react-google-maps';
 import {PlaceAutocompleteClassic} from './autocomplete-classic';
 import './App.css';
@@ -50,8 +50,6 @@ const App = () => {
   const [routePlans, setRoutePlans] = useState([]);
   const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [scores, setScores] = useState([]);
-
-  // console.log(currentPosition);
 
   return (
     <div className="App">
@@ -119,77 +117,73 @@ function GetCurrentCoord({setPos}) {
 }
 
 function Directions( {currPos} ) {
-  // const places = useMapsLibrary('places');
-  // const routes = useMapsLibrary('routes');
-  // const mapsLib = useMapsLibrary('maps');
-  // const geocoding = useMapsLibrary('geocoding');
   const markerLib = useMapsLibrary("marker");
   const [marker, setMarker] = useState();
 
   const map = useMap();
 
   React.useEffect(() => {
-    if (map) {
+    if (map && currPos) {
       map.setCenter(currPos);
-      // Show user's location using the built-in dot
-      // setMarker(new markerLib.Marker({
-      //   position: currPos,
-      //   map: map,
-      //   title: 'Your Location',
-      // }));
     }
   }, [map, currPos]);
 
 }
 
 function GetRouteButton({ origin, destination, setPlans, setScores, setSelected }) {
-  // const geocoding = useMapsLibrary('geocoding');
-  // const routes = useMapsLibrary('routes');
+  const [warning, setWarning] = useState('');
 
   const getCoordinates = (formatedAddress) => {
     const latitude = formatedAddress.geometry.location.lat();
     const longitude = formatedAddress.geometry.location.lng();
-    return([latitude, longitude]);
+    return [latitude, longitude];
   };
+
+  useEffect(() => {
+    if (warning) {
+      const timer = setTimeout(() => {
+        setWarning('');
+      }, 4000); // Hide after 4 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [warning]);
 
   const callMyFunction = async () => {
     try {
       const coordOrigin = getCoordinates(origin);
       const coordDest = getCoordinates(destination);
-      console.log(JSON.stringify({
-        origin: coordOrigin,
-        destination: coordDest,
-      }));
+
       const response = await fetch(`https://commute-compass-backend.vercel.app/myFunction`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          origin: coordOrigin,
-          destination: coordDest,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ origin: coordOrigin, destination: coordDest }),
       });
 
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
+      if (!response.ok) throw new Error('Network response was not ok');
 
       const data = await response.json();
-      console.log(data);
+
+      if (!Array.isArray(data) || data.length < 2 || !Array.isArray(data[0]) || data[0].length === 0) {
+        setWarning('⚠️ Please enter valid places within Winnipeg.');
+        return;
+      }
+
       const [plans, routeScores] = data;
       setPlans(plans);
       setScores(routeScores);
-      setSelected(routeScores[0].planId-1);
-      // displayRoute(plans[0]);
+      setSelected(routeScores[0].planId - 1);
     } catch (error) {
       console.error('There has been a problem with your fetch operation:', error);
+      setWarning('⚠️ Failed to retrieve routes. Please try again later.');
     }
   };
 
-
-
-  return(<button onClick={callMyFunction}>Get Route</button>);
+  return (
+    <div>
+      <button onClick={callMyFunction}>Get Route</button>
+      {warning && <div className="floating-warning">{warning}</div>}
+    </div>
+  );
 }
 
 function DisplayRoute({routePlans, selectedPlanIndex}) {
